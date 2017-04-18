@@ -35,7 +35,7 @@ uint8_t const SPI_QUARTER_SPEED = 2;
  * USE_SPI_LIB: if set, use the SPI library bundled with Arduino IDE, otherwise
  * run with a standalone driver for AVR.
  */
-#define USE_SPI_LIB
+//#define USE_SPI_LIB
 /**
  * Define MEGA_SOFT_SPI non-zero to use software SPI on Mega Arduinos.
  * Pins used are SS 10, MOSI 11, MISO 12, and SCK 13.
@@ -44,7 +44,7 @@ uint8_t const SPI_QUARTER_SPEED = 2;
  * on Mega Arduinos.  Software SPI works well with GPS Shield V1.1
  * but many SD cards will fail with GPS Shield V1.0.
  */
-#define MEGA_SOFT_SPI 0
+#define MEGA_SOFT_SPI 1
 //------------------------------------------------------------------------------
 #if MEGA_SOFT_SPI && (defined(__AVR_ATmega1280__)||defined(__AVR_ATmega2560__))
 #define SOFTWARE_SPI
