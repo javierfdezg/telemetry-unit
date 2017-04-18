@@ -13,9 +13,6 @@ Adafruit_GPS GPS(&mySerial);
 /* set to true to only log to SD when GPS has a fix, for debugging, keep it false */
 #define LOG_FIXONLY false
 
-// this keeps track of whether we're using the interrupt
-// off by default!
-boolean usingInterrupt = false;
 void useInterrupt(boolean); // Func prototype keeps Arduino 0023 happy
 
 // Set the pins used
@@ -49,10 +46,6 @@ char * log_col_names[LOG_COLUMN_COUNT] = {
 //////////////////////
 #define LOG_RATE 1000 // Log every second
 unsigned long lastLog = 0; // Global var to keep of last time we logged
-
-// this keeps track of whether we're using the interrupt
-// off by default!
-boolean usingInterrupt = false;
 
 // blink out an error code
 void error(uint8_t errno) {
@@ -116,9 +109,7 @@ void setup() {
   // Turn off updates on antenna status, if the firmware permits it
   GPS.sendCommand(PGCMD_NOANTENNA);
 
-  // the nice thing about this code is you can have a timer0 interrupt go off
-  // every 1 millisecond, and read data from the GPS for you. that makes the
-  // loop code a heck of a lot easier!
+  // Force usage of interruptions for GPS read
   useInterrupt(true);
 
   Serial.println("Ready!");
@@ -128,16 +119,10 @@ void setup() {
 // Interrupt is called once a millisecond, looks for any new GPS data, and stores it
 SIGNAL(TIMER0_COMPA_vect) {
   char c = GPS.read();
-  // if you want to debug, this is a good time to do it!
-  #ifdef UDR0
-      if (GPSECHO)
-        if (c) UDR0 = c;
-      // writing direct to UDR0 is much much faster than Serial.print
-      // but only one character can be written at a time.
-  #endif
 }
 
 void useInterrupt(boolean v) {
+  // v is always true
   if (v) {
     // Timer0 is already used for millis() - we'll just interrupt somewhere
     // in the middle and call the "Compare A" function above
@@ -145,25 +130,12 @@ void useInterrupt(boolean v) {
     TIMSK0 |= _BV(OCIE0A);
     usingInterrupt = true;
   }
-  else {
-    // do not call the interrupt function COMPA anymore
-    TIMSK0 &= ~_BV(OCIE0A);
-    usingInterrupt = false;
-  }
 }
 
 void loop() {
-  if (! usingInterrupt) {
-    // read data from the GPS in the 'main loop'
-    char c = GPS.read();
-    // if you want to debug, this is a good time to do it!
-    if (GPSECHO)
-      if (c) Serial.print(c);
-  }
-
-  { // If it's been LOG_RATE milliseconds since the last log:
+  // If it's been LOG_RATE milliseconds since the last log:
   if ((lastLog + LOG_RATE) <= millis())
-
+  {
     // if a sentence is received, we can check the checksum, parse it...
     if (GPS.newNMEAreceived() && GPS.parse(GPS.lastNMEA())) {
 
