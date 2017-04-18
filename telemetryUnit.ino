@@ -4,19 +4,6 @@
 #include <SD.h>
 #include <avr/sleep.h>
 
-// Ladyada's logger modified by Bill Greiman to use the SdFat library
-//
-// This code shows how to listen to the GPS module in an interrupt
-// which allows the program to have more 'freedom' - just parse
-// when a new NMEA sentence is available! Then access data when
-// desired.
-//
-// Tested and works great with the Adafruit Ultimate GPS Shield
-// using MTK33x9 chipset
-//    ------> http://www.adafruit.com/products/
-// Pick one up today at the Adafruit electronics shop
-// and help support open source hardware & software! -ada
-// Fllybob added 10 sec logging option
 SoftwareSerial mySerial(8, 7);
 Adafruit_GPS GPS(&mySerial);
 
@@ -63,29 +50,12 @@ char * log_col_names[LOG_COLUMN_COUNT] = {
 #define LOG_RATE 1000 // Log every second
 unsigned long lastLog = 0; // Global var to keep of last time we logged
 
-
-// read a Hex value and return the decimal equivalent
-uint8_t parseHex(char c) {
-  if (c < '0')
-    return 0;
-  if (c <= '9')
-    return c - '0';
-  if (c < 'A')
-    return 0;
-  if (c <= 'F')
-    return (c - 'A')+10;
-}
+// this keeps track of whether we're using the interrupt
+// off by default!
+boolean usingInterrupt = false;
 
 // blink out an error code
 void error(uint8_t errno) {
-  /*
-  if (SD.errorCode()) {
-   putstring("SD error: ");
-   Serial.print(card.errorCode(), HEX);
-   Serial.print(',');
-   Serial.println(card.errorData(), HEX);
-   }
-   */
   while(1) {
     uint8_t i;
     for (i=0; i<errno; i++) {
@@ -101,14 +71,10 @@ void error(uint8_t errno) {
 }
 
 void setup() {
-  // for Leonardos, if you want to debug SD issues, uncomment this line
-  // to see serial output
-  //while (!Serial);
-
   // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   // also spit it out
   Serial.begin(115200);
-  Serial.println("\r\nUltimate GPSlogger Shield");
+  Serial.println("\r\nTelemetry unit");
   pinMode(ledPin, OUTPUT);
 
   // make sure that the default chip select pin is set to
@@ -116,8 +82,7 @@ void setup() {
   pinMode(10, OUTPUT);
 
   // see if the card is present and can be initialized:
-  if (!SD.begin(chipSelect, 11, 12, 13)) {
-    //if (!SD.begin(chipSelect)) {      // if you're using an UNO, you can use this line instead
+  if (!SD.begin(chipSelect)) {     
     Serial.println("Card init. failed!");
     error(2);
   }
@@ -146,11 +111,6 @@ void setup() {
 
   // uncomment this line to turn on RMC (recommended minimum) and GGA (fix data) including altitude
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-  // uncomment this line to turn on only the "minimum recommended" data
-  //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
-  // For logging data, we don't suggest using anything but either RMC only or RMC+GGA
-  // to keep the log files at a reasonable size
-  // Set the update rate
   GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);   // 100 millihertz (once every 10 seconds), 1Hz or 5Hz update rate
 
   // Turn off updates on antenna status, if the firmware permits it
